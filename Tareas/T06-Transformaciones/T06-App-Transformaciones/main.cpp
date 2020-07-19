@@ -21,16 +21,16 @@ const float PI = 3.1468;
 
 // variables globales
 GLuint VBO[4], VAO;
-GLuint shader_program;
+GLuint shader_program, sp;
 GLFWwindow* window;
 const int R = 5;
 vector<float> vertices(0);
 int count_gotita, count_ojo;
+double ZOOM = 0.85;
 
-void add_points_curve(glm::vec2 P, glm::vec2 c, float angle){
+void all_points_curve(glm::vec2 P, glm::vec2 c, float angle, int points){
     /* angle in radians!! */
     angle *= -1;
-    int points = 250;
     float s = angle / points;
     for (int i=0; i<points; i++){
         glm::vec2 Pp;
@@ -41,15 +41,35 @@ void add_points_curve(glm::vec2 P, glm::vec2 c, float angle){
         PUSH_COORD(trans*glm::vec4(Pp,0.0,1.0));
     }
 }
+void next_point_curve(glm::vec2 P, glm::vec2 c, float angle, int points, int i){
+    angle *= -1;
+    float s = angle / points;
+    glm::vec2 Pp;
+    Pp.x =  1 * (P.x - c.x)*cos(s*i) + (P.y - c.y)*sin(s*i);
+    Pp.y = -1 * (P.x - c.x)*sin(s*i) + (P.y - c.y)*cos(s*i);
+    glm::mat4 trans =  glm::translate(glm::mat4(1), glm::vec3(c, 0));
+    PUSH_COORD(trans*glm::vec4(Pp,0.0,1.0));
+}
 void gen_vertices_gotita() {
-    add_points_curve(glm::vec2(0, R), glm::vec2(0, 2.5), 3.14);
-    add_points_curve(glm::vec2(0, 0), glm::vec2(0, -2.5), -3.14);
-    add_points_curve(glm::vec2(0, -R), glm::vec2(0, 0), -3.14);
+    /* genera vertices de GOTA para ser dibujados con GL_TRIANGLES_STRIP */
+    float r = 1.7;
+    float rr = 3.3;
+
+    PUSH_COORD(glm::vec2(0,R));
+    int points = 250;
+    for(int i=0; i<points; i++){
+        next_point_curve(glm::vec2(0, R), glm::vec2(0, rr), 3.14, points, i);
+        next_point_curve(glm::vec2(0, R), glm::vec2(0, 0), 3.14/2.0, points, i);
+    }
+    for(int i=0; i<points; i++){
+        next_point_curve(glm::vec2(0, rr-r), glm::vec2(0, -r), -3.14, points, i);
+        next_point_curve(glm::vec2(-R, 0), glm::vec2(0, 0), 3.14/2.0, points, i);
+    }
 }
 void gen_vertices_ojo() {
-    add_points_curve(glm::vec2(R,0), glm::vec2(0.0,0.0), 3.14 * 2);
-    add_points_curve(glm::vec2(2*R/3,0), glm::vec2(0.0,0.0), 3.14 * 2);
-    add_points_curve(glm::vec2(0.4,0), glm::vec2(0.0,0.0), 3.14 * 2);
+    all_points_curve(glm::vec2(R,0), glm::vec2(0.0,0.0), 3.14 * 2, 600);
+    all_points_curve(glm::vec2(2*R/3,0), glm::vec2(0.0,0.0), 3.14 * 2, 600);
+    all_points_curve(glm::vec2(0.4,0), glm::vec2(0.0,0.0), 3.14 * 2, 600);
 
 }
 void coord_to_gl(float space){
@@ -73,6 +93,7 @@ void set_gl_clear_color(double currentTime){
 
 	glClear(GL_COLOR_BUFFER_BIT);
 }
+
 
 void init(){
     glGenVertexArrays(1, &VAO);
@@ -98,6 +119,7 @@ void init(){
     vertices.clear();
 
     shader_program = Utils::createShaderProgram("vertShader.glsl", "fragShader.glsl");
+
     glUseProgram(shader_program);
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
@@ -108,6 +130,11 @@ void display(double currentTime) {
     /* ---- SENTIDO (HORARIO: 1 | ANTIHORARIO: -1) ----*/
     int s = -1;
     /* ------------------------------------------------*/
+    ZOOM = 0.9 + abs(sin(currentTime))*0.08;
+    glm::mat4 zoom = glm::scale(glm::mat4(1.0), glm::vec3(ZOOM, ZOOM, 1));
+
+    /* ------------------------------------------------*/
+
     set_gl_clear_color(currentTime);
     glm::mat4 mv, mov_gota;
     glm::vec4 color;
@@ -118,6 +145,8 @@ void display(double currentTime) {
     color = glm::vec4(0.5+(sin(currentTime)), 0.0, 0.0, 1.0);
     mv = glm::mat4(1.0);
     mv = glm::translate(mv, glm::vec3(0,0,0.5));
+    mv *= zoom;
+
     glUniformMatrix4fv(glGetUniformLocation(shader_program, "mv_matrix"), 1, false, value_ptr(mv));
     glUniform4fv(glGetUniformLocation(shader_program, "color"), 1, value_ptr(color));
     glBindBuffer(GL_ARRAY_BUFFER, VBO[0]);
@@ -125,60 +154,83 @@ void display(double currentTime) {
     glEnableVertexAttribArray(0);
     glDrawArrays(GL_TRIANGLE_FAN , 0, count_ojo/6);
 
+    color = glm::vec4(0.35, 0.0, 0.0, 1.0);
+    glUniform4fv(glGetUniformLocation(shader_program, "color"), 1, value_ptr(color));
+    glPointSize(14.0);
+    glDrawArrays(GL_POINTS, 0, count_ojo/6);
+
     // circulo 2
-    color = glm::vec4(0.5, 0.0, 0.0, 1.0);
+    color = glm::vec4(0.35, 0.0, 0.0, 1.0);
     glUniform4fv(glGetUniformLocation(shader_program, "color"), 1, value_ptr(color));
     glPointSize(14.0);
     glDrawArrays(GL_POINTS, count_ojo/6, count_ojo/6);
 
     // circulo 3
-    color = glm::vec4(0.5, 0.0, 0.0, 1.0);
+    color = glm::vec4(0.35, 0.0, 0.0, 1.0);
     glUniform4fv(glGetUniformLocation(shader_program, "color"), 1, value_ptr(color));
+    double Z = 1 + abs(sin(currentTime))*0.4;
+    mv *= glm::scale(glm::mat4(1.0), glm::vec3(Z*Z, Z*Z, 1));
+    glUniformMatrix4fv(glGetUniformLocation(shader_program, "mv_matrix"), 1, false, value_ptr(mv));
     glDrawArrays(GL_TRIANGLE_FAN, 2*count_ojo/6, count_ojo/6);
+
 
     // -------------------------------------------
 
     // ------------------ GOTAS ------------------
 
     // GOTA 1
-    color = glm::vec4(0.5, 0.0, 0.0, 1.0);
+    color = glm::vec4(0.35, 0.0, 0.0, 1.0);
     mv = glm::mat4(1.0);
     mv = glm::scale(mv, glm::vec3(0.125, 0.125, 0.125));
     mv = glm::translate(mv, glm::vec3(sin(s*(PI/3 + currentTime))*R, cos(s* (PI/3 + currentTime))*R, 0));
     mv = glm::rotate (mv, s*-1*(PI/3 + (float)currentTime), glm::vec3(0,0,1));
+    mv = glm::rotate (mv, -3.14f/(2.0f*2.0f), glm::vec3(0,0,1));
+    mv = glm::scale(mv, glm::vec3(1.2, 1.2, 1));
+
+    Z = 0.9 + abs(sin(currentTime))*0.6;
+    mv *= glm::scale(glm::mat4(1.0), glm::vec3(Z, Z, 1));
+
     glUniformMatrix4fv(glGetUniformLocation(shader_program, "mv_matrix"), 1, false, value_ptr(mv));
+    glUniformMatrix4fv(glGetUniformLocation(sp, "mv_matrix"), 1, false, value_ptr(mv));
+
     glUniform4fv(glGetUniformLocation(shader_program, "color"), 1, value_ptr(color));
+
     glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
-    glPointSize(10.0);
-    glDrawArrays(GL_POINTS, 0, count_gotita/2);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, count_gotita/2);
 
     // GOTA 2
     mv = glm::mat4(1.0);
     mv = glm::scale(mv, glm::vec3(0.125, 0.125, 0.125));
     mv = glm::translate(mv, glm::vec3(sin(s*(-PI/3 + (float)currentTime))*R, cos(s*(-PI/3 +currentTime))*R, 0));
     mv = glm::rotate (mv, s*-1*(-PI/3 + (float)currentTime), glm::vec3(0,0,1));
+    mv = glm::rotate (mv, -3.14f/(2.0f*2.0f), glm::vec3(0,0,1));
+    mv = glm::scale(mv, glm::vec3(1.2, 1.2, 1));
+    Z = 0.9 + abs(sin(currentTime))*0.6;
+    mv *= glm::scale(glm::mat4(1.0), glm::vec3(Z, Z, 1));
+
     glUniformMatrix4fv(glGetUniformLocation(shader_program, "mv_matrix"), 1, false, value_ptr(mv));
     glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
-    glPointSize(10.0);
-    glDrawArrays(GL_POINTS, 0, count_gotita/2);
-    glDrawArrays(GL_LINE_LOOP, 0, count_gotita/2);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, count_gotita/2);
 
     // GOTA 3
     mv = glm::mat4(1.0);
     mv = glm::scale(mv, glm::vec3(0.125, 0.125, 0.125));
     mv = glm::translate(mv, glm::vec3(sin(s*(-PI + (float)currentTime))*R, cos(s*(-PI +currentTime))*R, 0));
     mv = glm::rotate (mv, s*-1 * (PI + (float)currentTime), glm::vec3(0,0,1));
+    mv = glm::rotate (mv, -3.14f/(2.0f*2.0f), glm::vec3(0,0,1));
+    mv = glm::scale(mv, glm::vec3(1.2, 1.2, 1));
+    Z = 0.9 + abs(sin(currentTime))*0.6;
+    mv *= glm::scale(glm::mat4(1.0), glm::vec3(Z, Z, 1));
+
     glUniformMatrix4fv(glGetUniformLocation(shader_program, "mv_matrix"), 1, false, value_ptr(mv));
     glBindBuffer(GL_ARRAY_BUFFER, VBO[1]);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(0);
-    glPointSize(10.0);
-    glDrawArrays(GL_POINTS, 0, count_gotita/2);
-    glDrawArrays(GL_LINE_LOOP, 0, count_gotita/2);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, count_gotita/2);
 
     // ---------------------------
 }
