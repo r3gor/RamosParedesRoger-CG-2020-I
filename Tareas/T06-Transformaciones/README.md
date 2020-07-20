@@ -18,3 +18,6 @@
 ## Fuentes
 1. Para el gradiente de oscuridad (Fragment Shader, punto 3): 
     https://stackoverflow.com/questions/47285778/how-to-create-a-mutli-step-radial-gradient-fragment-shader
+    
+## Screenshot (sin movimiento)
+![GitHub Logo](https://github.com/r3gor/RamosParedesRoger-CG-2020-I/blob/master/Tareas/T06-Transformaciones/T06-App-Transformaciones/Screenshot/T06-RamosParedesRoger.jpg)
