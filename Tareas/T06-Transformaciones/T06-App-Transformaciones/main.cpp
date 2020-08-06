@@ -1,7 +1,6 @@
 #define GLEW_STATIC
 #include <GL\glew.h>
 #include <GLFW\glfw3.h>
-
 #include <glm\glm.hpp>
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
@@ -12,7 +11,7 @@
 
 #include "Utils.h"
 
-#define PUSH_COORD(P) vertices.insert(vertices.end(), {(P).x, (P).y}); 
+#define PUSH_COORD(P) vertices.insert(vertices.end(), {(P).x, (P).y});
 #define PRINT_VERTICES for (int i=0; (unsigned int)i<vertices.size(); i++) cout<<":::v"<<i<<" = "<<vertices[i]<<endl;
 
 using namespace std;
